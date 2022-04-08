@@ -46,7 +46,14 @@
         },
       };
 
-      console.log("야옹");
+      const fetchCat = async (text) => {
+        const OPEN_API_DOMAIN = "https://cataas.com";
+        const response = await fetch(
+          `${OPEN_API_DOMAIN}/cat/says/${text}?json=true`
+        );
+        const responseJson = await response.json();
+        return `${OPEN_API_DOMAIN}/${responseJson.url}`;
+      };
 
       const Title = (props) => {
         return <h1>{props.children}</h1>;
@@ -63,6 +70,9 @@
       }
 
       function Favorites({ favorits }) {
+        if (favorits.length === 0) {
+          return <div>사진 위 하트를 눌러 고양이 사진을 저장해봐요!</div>;
+        }
         return (
           <ul className="favorites">
             {favorits.map((cat) => (
@@ -72,11 +82,12 @@
         );
       }
 
-      const MainCard = ({ img, onHeartClick }) => {
+      const MainCard = ({ img, onHeartClick, alreadyFovorite }) => {
+        const heartIcon = alreadyFovorite ? "💖" : "🤍";
         return (
           <div className="main-card">
             <img src={img} alt="고양이" width="400" />
-            <button onClick={onHeartClick}>🤍</button>
+            <button onClick={onHeartClick}>{heartIcon}</button>
           </div>
         );
       };
@@ -106,7 +117,7 @@
             setErrorMessage("빈 값으로는 만들 수 없습니다.");
             return;
           }
-          updatrMainCat();
+          updatrMainCat(value);
         }
 
         return (
@@ -132,23 +143,47 @@
         const CAT3 =
           "https://cataas.com/cat/595f280b557291a9750ebf65/says/JavaScript";
 
-        // useState변수 선언 한방에
-        const [counter, setCounter] = React.useState(
-          jsonLocalStorage.getItem("counter")
-        ); // counterState에 초기값 1을 전달
-        const [mainCatCard, setCatCard] = React.useState(CAT1);
+        const [counter, setCounter] = React.useState(() => {
+          return jsonLocalStorage.getItem("counter");
+        });
 
-        const [favorits, setFavorits] = React.useState(
-          jsonLocalStorage.getItem("favorits") || []
+        console.log(
+          jsonLocalStorage.getItem("counter") === null ? "true" : "false"
         );
 
-        function handleFormSubmit(event) {}
+        const [mainCatCard, setCatCard] = React.useState(CAT1);
 
-        function updatrMainCat(event) {
-          setCatCard(CAT2);
-          const nextCounter = counter + 1;
-          setCounter(nextCounter);
-          jsonLocalStorage.setItem("counter", nextCounter);
+        // const [favorits, setFavorits] = React.useState(
+        //   jsonLocalStorage.getItem("favorits") || []
+        // );
+
+        const [favorits, setFavorits] = React.useState(() => {
+          return jsonLocalStorage.getItem("favorits") || [];
+        });
+
+        const alreadyFovorite = favorits.includes(mainCatCard);
+
+        async function setInitialCat() {
+          const newCat = await fetchCat("First cat");
+          console.log(newCat);
+          setCatCard(newCat);
+        }
+
+        React.useEffect(() => {
+          //함수를 초기에 한번만 부르도록 만듬 React.useEffect
+          setInitialCat();
+        }, []);
+
+        async function updatrMainCat(value) {
+          const newCat = await fetchCat(value);
+
+          setCatCard(newCat);
+
+          setCounter((prev) => {
+            const nextCounter = prev + 1;
+            jsonLocalStorage.setItem("counter", nextCounter);
+            return nextCounter;
+          });
         }
 
         function handleHeartClick() {
@@ -158,11 +193,17 @@
           jsonLocalStorage.setItem("favorits", nextFavorites);
         }
 
+        const counterTitle = counter === null ? "" : counter + "번째 ";
+
         return (
           <div>
-            <Title>{counter}번째 고양이 가라사대</Title>
+            <Title>{counterTitle}고양이 가라사대</Title>
             <Form updatrMainCat={updatrMainCat} />
-            <MainCard img={mainCatCard} onHeartClick={handleHeartClick} />
+            <MainCard
+              img={mainCatCard}
+              onHeartClick={handleHeartClick}
+              alreadyFovorite={alreadyFovorite}
+            />
             <Favorites favorits={favorits} />
           </div>
         );
